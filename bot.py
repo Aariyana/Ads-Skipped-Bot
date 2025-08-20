@@ -264,9 +264,12 @@ async def clean_url(update: Update, context: CallbackContext) -> None:
             }
         )
         
-        # Send cleaned URL
- response_text = f"""
- ✅*URL Cleaned Successfully!*✅
+                # Get expanded URL first
+        expanded_url = expand_short_url(url)
+        
+        # Send cleaned URL with all steps shown
+        response_text = f"""
+URL Cleaned Successfully! ✅
 
 *Shortened URL:* 
 `{url}`
@@ -282,6 +285,8 @@ async def clean_url(update: Update, context: CallbackContext) -> None:
 
 💎 *Status:* {'Premium (Free Trial)' if is_premium else 'Free'}
 """
+
+        await update.message.reply_text(response_text, parse_mode='Markdown')
 
         await update.message.reply_text(response_text, parse_mode='Markdown')
         
