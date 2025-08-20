@@ -434,11 +434,24 @@ async def button_handler(update: Update, context: CallbackContext) -> None:
 
 # ==================== ADMIN COMMANDS ====================
 
-async def make_premium(update: Update, context: CallbackContext) -> None:
-    """Admin command to make user premium"""
+async def admin_help(update: Update, context: CallbackContext) -> None:
+    """Show admin help"""
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("❌ Admin only command.")
         return
+    
+    text = """
+👑 *Admin Commands* 👑
+
+/make\_premium <user\_id> <days> - Make user premium
+/userinfo <user\_id> - Get user information  
+/broadcast <message> - Broadcast to all users
+/stats - View user statistics with admin info
+
+*Only admins can use these commands!*
+"""
+    
+    await update.message.reply_text(text, parse_mode='Markdown')
     
     if not context.args:
         await update.message.reply_text("Usage: /make_premium <user_id> <days>\nExample: /make_premium 123456789 30")
