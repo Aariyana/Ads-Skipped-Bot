@@ -386,7 +386,7 @@ async def referral_info(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text(text, parse_mode='Markdown')
         
     except Exception as e:
-        logger.error(f"Error in referral: {e})
+        logger.error(f"Error in referral: {e}")
         await update.message.reply_text("❌ Error generating referral link.")
 
 async def pay(update: Update, context: CallbackContext) -> None:
