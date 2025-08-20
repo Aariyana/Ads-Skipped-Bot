@@ -11,7 +11,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 MONGO_URI = "YOUR_MONGO_URI"
 UPI_ID = "YOUR_UPI_ID"
-ADMINS = "TELEGRAM_ID  # তোমাৰ Telegram ID
+ADMINS = "YOUR_TELEGRAM_ID"
 
 # -----------------------------
 # DATABASE
