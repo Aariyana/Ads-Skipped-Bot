@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 # Load environment variables
 load_dotenv()
 
-
 # ==================== TRACKING PARAMETERS & SHORTENERS ====================
 TRACKING_PARAMS = {
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id",
@@ -23,15 +22,9 @@ SHORTENER_HOSTS = {
     "bit.ly", "t.co", "goo.gl", "tinyurl.com", "is.gd", "buff.ly", "ow.ly", "rebrand.ly",
     "ift.tt", "linktr.ee", "cutt.ly", "s.id", "v.gd", "soo.gd", "bl.ink", "shorte.st",
     "adf.ly", "ouo.io", "linkvertise.com", "clk.sh", "exe.io", "bc.vc", "shrtco.de", "shr.link",
-    "lnkd.in", "1drv.ms", "rb.gy", "qr.ae", "trib.al", "smarturl.it", "spotify.link"
+    "lnkd.in", "1drv.ms", "rb.gy", "qr.ae", "trib.al", "smarturl.it", "spotify.link", "lksfy.com"
 }
 # ==========================================================================
-
-# Set up logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
 
 # Set up logging
 logging.basicConfig(
@@ -73,11 +66,35 @@ def is_admin(user_id):
     return user_id in ADMIN_IDS
 
 def expand_short_url(short_url):
-    """Expand short URLs to see their final destination"""
+    """Expand short URLs to see their final destination with multiple methods"""
     try:
-        response = requests.head(short_url, allow_redirects=True, timeout=10)
-        return response.url
-    except:
+        # Method 1: HEAD request (fastest)
+        try:
+            response = requests.head(short_url, allow_redirects=True, timeout=5, 
+                                   headers={'User-Agent': 'Mozilla/5.0 (Ads-Cleaner-Bot)'})
+            if response.url != short_url:
+                return response.url
+        except:
+            pass
+        
+        # Method 2: GET request (slower but more reliable)
+        try:
+            response = requests.get(short_url, allow_redirects=True, timeout=5,
+                                  headers={'User-Agent': 'Mozilla/5.0 (Ads-Cleaner-Bot)'})
+            if response.url != short_url:
+                return response.url
+        except:
+            pass
+        
+        # Method 3: Check if it's a known shortener
+        parsed = urlparse(short_url)
+        if parsed.netloc in SHORTENER_HOSTS:
+            return f"{short_url} (Shortened - could not expand)"
+        
+        return short_url
+        
+    except Exception as e:
+        logger.error(f"Error expanding URL: {e}")
         return short_url
 
 def clean_ad_url(url):
@@ -88,56 +105,13 @@ def clean_ad_url(url):
         
         parsed = urlparse(expanded_url)
         
-        # Comprehensive list of tracking parameters to remove
-        tracking_params = [
-            # Google parameters
-            'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-            'utm_id', 'utm_cid', 'utm_reader', 'utm_viz_id', 'utm_pubreferrer',
-            'utm_swu', 'utm_referrer', 'utm_social', 'utm_social_type',
-            
-            # Facebook parameters
-            'fbclid', 'fb_action_ids', 'fb_action_types', 'fb_source',
-            'fb_ref', 'fb_comment_id', 'fbc', 'fblid', 'fbid',
-            
-            # Microsoft parameters
-            'msclkid', 'msckid', 'mscid', 'mscfid',
-            
-            # Twitter parameters
-            'twclid', 'twsrc', 'twod', 'twcr',
-            
-            # TikTok parameters
-            'ttclid', 'tt_source', 'tt_medium', 'tt_campaign',
-            
-            # Pinterest parameters
-            'pinclid', 'pin_placement', 'pin_source', 'pin_medium',
-            
-            # LinkedIn parameters
-            'liclid', 'licreative', 'lidsp', 'li_fat_id',
-            
-            # Snapchat parameters
-            'scclid', 'snap_origin', 'snap_origin_type',
-            
-            # Email parameters
-            'vero_conv', 'vero_id', 'vero_rid', 'mc_cid', 'mc_eid',
-            
-            # General tracking
-            'gclid', 'gclsrc', 'dclid', 'yclid', 'ipclid', 'rtd_cid',
-            '_openstat', 'hmpl', 'hmcu', 'hmkw', 'hmci', 'hmsr', 'hmpl',
-            'icid', 'iclp', 'vero_conv', 'vero_id', 'campaign_id',
-            'clickid', 'affiliate_id', 'partner_id', 'ref_id', 'referral_code',
-            'source', 'medium', 'campaign', 'term', 'content', 'affiliate',
-            'clickId', 'transactionId', 'redirect_log_mongo_id',
-            'redirect_mongo_id', 'sc_campaign', 'sc_channel', 'sc_content',
-            'sc_country', 'sc_geo', 'sc_medium', 'sc_outcome', 'sc_page',
-            'sc_group', 'sc_publisher', 'sc_publisher_name'
-        ]
-        
         # Keep only non-tracking query parameters
         query_params = parse_qs(parsed.query)
         clean_params = {}
         
         for key, values in query_params.items():
             key_lower = key.lower()
+            # USE YOUR TRACKING_PARAMS SET HERE
             is_tracking = key_lower in TRACKING_PARAMS
             
             if not is_tracking:
@@ -174,7 +148,7 @@ async def start(update: Update, context: CallbackContext) -> None:
             
             new_user = {
                 'user_id': user_id,
-                'is_premium': True,  # Give free trial
+                'is_premium': True,
                 'premium_until': datetime.now() + timedelta(hours=24),
                 'usage_count': 0,
                 'total_cleaned': 0,
@@ -195,26 +169,26 @@ async def start(update: Update, context: CallbackContext) -> None:
                 )
         
         welcome_text = f"""
-🤖 *Welcome to Ads Link Cleaner Bot!* {admin_badge}
+🤖 Welcome to Ads Link Cleaner Bot!{admin_badge}
 
 I remove tracking parameters and clean ads from URLs!
 
-✨ *Features:*
+✨ Features:
 • Clean ad tracking parameters
 • {FREE_DAILY_LIMIT} free cleans daily
 • Premium for unlimited cleans
 • Referral rewards system
 
-🔧 *Commands:*
+🔧 Commands:
 /clean [url] - Clean ad links
-/premium - Get premium access  
+/premium - Get premium access
 /referral - Your referral link
 /stats - Your usage statistics
 /pay - Payment options
 
-📱 *Follow us:* [Facebook Page]({FACEBOOK_PAGE})
+📱 Follow us: [Facebook Page]({FACEBOOK_PAGE})
 
-*Send me any URL with ads to get started!* 🚀
+Send me any URL with ads to get started! 🚀
 """
         
         await update.message.reply_text(welcome_text, parse_mode='Markdown')
@@ -266,7 +240,7 @@ async def clean_url(update: Update, context: CallbackContext) -> None:
         # Check daily limit for free users
         if not is_premium and user.get('usage_count', 0) >= FREE_DAILY_LIMIT:
             await update.message.reply_text(
-                f"❌ *Daily Limit Reached!*\n\n"
+                f"❌ Daily Limit Reached!\n\n"
                 f"You've used {user.get('usage_count', 0)}/{FREE_DAILY_LIMIT} free cleans today.\n"
                 "Upgrade to premium for unlimited cleans!\n\n"
                 "Use /premium to learn more!",
@@ -276,6 +250,16 @@ async def clean_url(update: Update, context: CallbackContext) -> None:
         
         # Clean the URL
         cleaned_url = clean_ad_url(url)
+        expanded_url = expand_short_url(url)
+        
+        # Check if URL is a known shortener
+        parsed = urlparse(url)
+        is_shortened = parsed.netloc in SHORTENER_HOSTS
+        
+        if expanded_url == url and is_shortened:
+            expanded_display = "❌ Could not expand (link may be protected)"
+        else:
+            expanded_display = expanded_url
         
         # Update user stats
         users_collection.update_one(
@@ -286,9 +270,6 @@ async def clean_url(update: Update, context: CallbackContext) -> None:
             }
         )
         
-                # Get expanded URL first
-        expanded_url = expand_short_url(url)
-        
         # Send cleaned URL with all steps shown
         response_text = f"""
 URL Cleaned Successfully! ✅
@@ -297,7 +278,7 @@ URL Cleaned Successfully! ✅
 `{url}`
 
 *Expanded URL:* 
-`{expanded_url}`
+`{expanded_display}`
 
 *Final Cleaned URL:* 
 `{cleaned_url}`
@@ -307,8 +288,6 @@ URL Cleaned Successfully! ✅
 
 💎 *Status:* {'Premium (Free Trial)' if is_premium else 'Free'}
 """
-
-        await update.message.reply_text(response_text, parse_mode='Markdown')
 
         await update.message.reply_text(response_text, parse_mode='Markdown')
         
@@ -324,11 +303,11 @@ async def premium_info(update: Update, context: CallbackContext) -> None:
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     text = f"""
-🌟 *Premium Membership* 🌟
+🌟 Premium Membership 🌟
 
 *Benefits:*
 • ✅ Unlimited URL cleaning
-• ✅ No daily limits  
+• ✅ No daily limits
 • ✅ Priority processing
 • ✅ Exclusive features
 
@@ -341,7 +320,7 @@ async def premium_info(update: Update, context: CallbackContext) -> None:
 • UPI / Bank Transfer
 • Referral rewards
 
-*Click below to get premium!* 🚀
+Click below to get premium! 🚀
 """
     
     await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
@@ -371,10 +350,10 @@ async def stats(update: Update, context: CallbackContext) -> None:
         if is_admin(user_id):
             total_users = users_collection.count_documents({})
             premium_users = users_collection.count_documents({'is_premium': True})
-            admin_info = f"\n👑 *Admin Stats:*\n• Total Users: {total_users}\n• Premium Users: {premium_users}"
+            admin_info = f"\n👑 Admin Stats:\n• Total Users: {total_users}\n• Premium Users: {premium_users}"
         
         text = f"""
-📊 *Your Statistics* 📊
+📊 Your Statistics 📊
 
 *Status:* {status}
 *Today's Usage:* {user.get('usage_count', 0)}/{FREE_DAILY_LIMIT}
@@ -382,7 +361,7 @@ async def stats(update: Update, context: CallbackContext) -> None:
 *Referrals:* {referrals}/{REFERRALS_PER_REWARD}
 {admin_info}
 
-*Earn free premium by referring friends!*
+Earn free premium by referring friends!
 Use /referral to get your link.
 """
         
@@ -402,7 +381,7 @@ async def referral_info(update: Update, context: CallbackContext) -> None:
         referrals = len(user.get('referrals', [])) if user else 0
         
         text = f"""
-📨 *Referral Program* 📨
+📨 Referral Program 📨
 
 *Your Link:* `{referral_link}`
 
@@ -410,7 +389,7 @@ async def referral_info(update: Update, context: CallbackContext) -> None:
 
 *Reward:* {PREMIUM_DAYS_PER_REWARD} day premium for every {REFERRALS_PER_REWARD} referrals!
 
-*Share your link and earn free premium!* 🎁
+Share your link and earn free premium! 🎁
 """
         
         await update.message.reply_text(text, parse_mode='Markdown')
@@ -423,18 +402,18 @@ async def pay(update: Update, context: CallbackContext) -> None:
     """Send payment information"""
     try:
         text = f"""
-💳 *Payment Options* 💳
+💳 Payment Options 💳
 
 *UPI ID:* `{UPI_ID}`
 *App:* OKBIZ Axis Bank
 
 *Payment Plans:*
 • 1 Week - ₹49
-• 1 Month - ₹149  
+• 1 Month - ₹149
 • 3 Months - ₹399
 
-📸 *After payment, send screenshot to @Admin*
-⚡ *Activated within 5 minutes!*
+📸 After payment, send screenshot to @Admin
+⚡ Activated within 5 minutes!
 """
         
         await update.message.reply_text(text, parse_mode='Markdown')
@@ -451,19 +430,18 @@ async def button_handler(update: Update, context: CallbackContext) -> None:
         await pay(query.message, context)
     elif query.data == 'premium_benefits':
         await query.edit_message_text("""
-🎯 *Premium Benefits* 🎯
+🎯 Premium Benefits 🎯
 
 • Unlimited URL cleaning (no daily limits)
-• 5x faster processing speed  
+• 5x faster processing speed
 • Exclusive early access to new features
 • Priority customer support
 • No waiting times during peak hours
 
-*Upgrade today for the best experience!* 🚀
+Upgrade today for the best experience! 🚀
 """, parse_mode='Markdown')
 
 # ==================== ADMIN COMMANDS ====================
-
 async def make_premium(update: Update, context: CallbackContext) -> None:
     """Admin command to make user premium"""
     if not is_admin(update.effective_user.id):
@@ -520,7 +498,7 @@ async def user_info(update: Update, context: CallbackContext) -> None:
         referrals = len(user.get('referrals', []))
         
         text = f"""
-👤 *User Information* 👤
+👤 User Information 👤
 
 *User ID:* `{target_id}`
 *Status:* {'Premium 🎯' if is_premium else 'Free ⭐'}
@@ -559,7 +537,7 @@ async def broadcast(update: Update, context: CallbackContext) -> None:
             try:
                 await context.bot.send_message(
                     chat_id=user['user_id'],
-                    text=f"📢 *Admin Broadcast:*\n\n{message}",
+                    text=f"📢 Admin Broadcast:\n\n{message}",
                     parse_mode='Markdown'
                 )
                 success += 1
@@ -583,14 +561,14 @@ async def admin_help(update: Update, context: CallbackContext) -> None:
         return
     
     text = """
-👑 *Admin Commands* 👑
+👑 Admin Commands 👑
 
-/make\_premium <user\_id> <days> - Make user premium
-/userinfo <user\_id> - Get user information  
+/make_premium <user_id> <days> - Make user premium
+/userinfo <user_id> - Get user information
 /broadcast <message> - Broadcast to all users
 /stats - View user statistics with admin info
 
-*Only admins can use these commands!*
+Only admins can use these commands!
 """
     
     await update.message.reply_text(text, parse_mode='Markdown')
