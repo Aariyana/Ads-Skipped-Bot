@@ -8,7 +8,6 @@ from telegram.ext import Application, CommandHandler, CallbackContext, CallbackQ
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-import qrcode
 from io import BytesIO
 
 # Load environment variables
@@ -229,7 +228,7 @@ async def premium_info(update: Update, context: CallbackContext) -> None:
 • 3 Months - ₹399
 
 *Payment Methods:*
-• UPI / QR Code
+• UPI
 • Referral rewards
 
 *Click below to get premium!* 🚀
