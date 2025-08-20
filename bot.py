@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')  # Note: Typo in your env variable name
-MONGODB_URI = os.getenv('MONGODB_URI')       # Note: Typo in your env variable name
+MONGODB_URI = os.getenv('MONGODB_URT')       # Note: Typo in your env variable name
 DB_NAME = os.getenv('DB_NAME')
 COLLECTION = os.getenv('COLLECTION')
 ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_ID', '').split(',') if id.strip()]
