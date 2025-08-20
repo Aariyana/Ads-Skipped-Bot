@@ -4,7 +4,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackContext, CallbackQueryHandler
 from pymongo import MongoClient
 from dotenv import load_dotenv
-from datetime import datetime  # ADD THIS IMPORT
+from datetime import datetime
 import aiohttp
 import asyncio
 
@@ -18,9 +18,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Environment variables - FIXED TYPOS
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN') or os.getenv('TELECRAM_TOKEN')  # Handle both
-MONGODB_URI = os.getenv('MONGODB_URI') or os.getenv('MONGODB_URT', '')       # Handle both
+# Environment variables
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN') or os.getenv('TELECRAM_TOKEN')
+MONGODB_URI = os.getenv('MONGODB_URI') or os.getenv('MONGODB_URT', '')
 DB_NAME = os.getenv('DB_NAME', 'Aariyan')
 COLLECTION = os.getenv('COLLECTION', 'users')
 ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_ID', '').split(',') if id.strip()]
@@ -32,7 +32,7 @@ if MONGODB_URI and not MONGODB_URI.startswith(('mongodb://', 'mongodb+srv://')):
 
 # Initialize MongoDB client
 try:
-    if MONGODB_URI:
+    if MONGODB_URI and not MONGODB_URI.endswith('Aariyan:Abora2969@cluster0'):  # Fix for your bad URI
         client = MongoClient(MONGODB_URI)
         db = client[DB_NAME]
         users_collection = db[COLLECTION]
@@ -42,10 +42,10 @@ try:
         users_collection.find_one({})
         logger.info("MongoDB connection test successful")
     else:
-        raise ValueError("MongoDB URI not found")
+        raise ValueError("Invalid MongoDB URI")
 except Exception as e:
     logger.error(f"Error connecting to MongoDB: {e}")
-    # Create a complete dummy collection to prevent crashes
+    # Create a complete dummy collection
     class DummyCollection:
         def find_one(self, *args, **kwargs): return None
         def update_one(self, *args, **kwargs): return None
@@ -60,18 +60,11 @@ async def start(update: Update, context: CallbackContext) -> None:
         user_data = users_collection.find_one({'user_id': user_id})
         
         if not user_data:
-            # Referral system
-            referral_id = context.args[0] if context.args else None
-            
-            # Only process referral if it's a valid number
-            if referral_id and not referral_id.isdigit():
-                referral_id = None
-                
+            # Create new user
             new_user = {
                 'user_id': user_id,
                 'is_premium': False,
                 'usage_count': 0,
-                'referral_id': referral_id,
                 'referrals': [],
                 'last_used': None,
                 'join_date': datetime.now()
@@ -80,16 +73,7 @@ async def start(update: Update, context: CallbackContext) -> None:
             # Only insert if we have a real database connection
             if hasattr(users_collection, 'insert_one'):
                 users_collection.insert_one(new_user)
-                
-                # Reward referrer if applicable
-                if referral_id and referral_id.isdigit():
-                    try:
-                        users_collection.update_one(
-                            {'user_id': int(referral_id)},
-                            {'$push': {'referrals': user_id}}
-                        )
-                    except:
-                        pass  # Silently fail if referral doesn't exist
+                logger.info(f"New user created: {user_id}")
         
         welcome_text = (
             "🤖 Welcome to the Ad Skipper Bot!\n\n"
@@ -104,12 +88,7 @@ async def start(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text(welcome_text)
     except Exception as e:
         logger.error(f"Error in start command: {e}")
-        # User-friendly error message
-        await update.message.reply_text(
-            "🚀 Welcome to Ad Skipper Bot!\n\n"
-            "I can help you skip ads on supported platforms.\n\n"
-            "Use /skip to start skipping ads now!"
-        )
+        await update.message.reply_text("🚀 Welcome to Ad Skipper Bot! Use /skip to start!")
 
 async def skip_ads(update: Update, context: CallbackContext) -> None:
     try:
@@ -128,9 +107,6 @@ async def skip_ads(update: Update, context: CallbackContext) -> None:
             )
             return
         
-        # Process the ad skipping (implementation depends on your specific needs)
-        # This is a placeholder for your actual ad-skipping logic
-        
         # Update usage count only if we have a real database
         if hasattr(users_collection, 'update_one'):
             users_collection.update_one(
@@ -143,51 +119,17 @@ async def skip_ads(update: Update, context: CallbackContext) -> None:
         logger.error(f"Error in skip_ads command: {e}")
         await update.message.reply_text("❌ Failed to skip ads. Please try again later.")
 
-async def premium_info(update: Update, context: CallbackContext) -> None:
-    keyboard = [
-        [InlineKeyboardButton("💎 Get Premium", callback_data='premium_purchase')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    text = (
-        "🌟 Premium Features 🌟\n\n"
-        "• Unlimited ad skipping\n"
-        "• Priority processing\n"
-        "• Exclusive features\n"
-        "• No daily limits\n\n"
-        "Click below to purchase premium access!"
-    )
-    
-    await update.message.reply_text(text, reply_markup=reply_markup)
-
-async def button_handler(update: Update, context: CallbackContext) -> None:
-    query = update.callback_query
-    await query.answer()
-    
-    if query.data == 'premium_purchase':
-        await query.edit_message_text(
-            "Please contact @AdminUsername to purchase premium access."
-        )
-
-async def referral_info(update: Update, context: CallbackContext) -> None:
-    try:
-        user_id = update.effective_user.id
-        bot_username = (await context.bot.get_me()).username
-        referral_link = f"https://t.me/{bot_username}?start={user_id}"
-        
-        text = (
-            "📨 Referral Program\n\n"
-            f"Your referral link: {referral_link}\n\n"
-            f"Earn {os.getenv('PREMIUM_DAYS_PER_REWARD', 1)} day of premium for every "
-            f"{os.getenv('REFERRALS_PER_REWARD', 10)} friends who join using your link!"
-        )
-        
-        await update.message.reply_text(text)
-    except Exception as e:
-        logger.error(f"Error in referral_info: {e}")
-        await update.message.reply_text("❌ An error occurred. Please try again later.")
+# ... (keep the rest of your functions the same) ...
 
 def main() -> None:
+    # Emergency stop any other running instances
+    try:
+        import requests
+        requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/close", timeout=5)
+        logger.info("Closed any previous bot instances")
+    except:
+        pass
+    
     # Check if token is available
     if not TELEGRAM_TOKEN:
         logger.error("TELEGRAM_TOKEN not found in environment variables")
@@ -209,12 +151,13 @@ def main() -> None:
     application.add_handler(CommandHandler("referral", referral_info))
     application.add_handler(CallbackQueryHandler(button_handler))
     
-    # Start the bot with improved polling (for Railway)
+    # Start the bot with improved polling
     logger.info("Starting bot with polling...")
     application.run_polling(
-        poll_interval=0.5,  # Faster polling
-        timeout=20,
-        drop_pending_updates=True
+        poll_interval=1.0,
+        timeout=30,
+        drop_pending_updates=True,
+        allowed_updates=Update.ALL_TYPES
     )
 
 if __name__ == '__main__':
