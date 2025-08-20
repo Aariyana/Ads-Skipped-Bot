@@ -265,9 +265,7 @@ async def clean_url(update: Update, context: CallbackContext) -> None:
         )
         
         # Send cleaned URL
-        response_text = f"""
-# In your clean_url function, replace the response text:
-response_text = f"""
+ response_text = f"""
 URL Cleaned Successfully!
 
 *Shortened URL:* 
