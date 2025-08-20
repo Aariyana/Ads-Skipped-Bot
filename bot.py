@@ -494,7 +494,7 @@ async def user_info(update: Update, context: CallbackContext) -> None:
 
 *User ID:* `{target_id}`
 *Status:* {'Premium 🎯' if is_premium else 'Free ⭐'}
-*Premium Until:* {premium_until if premium_else 'Not premium'}
+*Premium Until:* {premium_until if premium_until else 'Not premium'}
 *Total Cleaned:* {user.get('total_cleaned', 0)}
 *Referrals:* {referrals}
 *Join Date:* {user.get('join_date', 'Unknown')}
