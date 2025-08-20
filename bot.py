@@ -266,12 +266,17 @@ async def clean_url(update: Update, context: CallbackContext) -> None:
         
         # Send cleaned URL
         response_text = f"""
+# In your clean_url function, replace the response text:
+response_text = f"""
 ✅ *URL Cleaned Successfully!* ✅
 
-*Original URL:* 
+*Shortened URL:* 
 `{url}`
 
-*Cleaned URL:* 
+*Expanded URL:* 
+`{expanded_url}`
+
+*Final Cleaned URL:* 
 `{cleaned_url}`
 
 📊 *Stats Today:* {user.get('usage_count', 0) + 1}/{FREE_DAILY_LIMIT}
@@ -279,7 +284,7 @@ async def clean_url(update: Update, context: CallbackContext) -> None:
 
 💎 *Status:* {'Premium (Free Trial)' if is_premium else 'Free'}
 """
-        
+
         await update.message.reply_text(response_text, parse_mode='Markdown')
         
     except Exception as e:
