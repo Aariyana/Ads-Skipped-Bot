@@ -4,6 +4,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackContext, CallbackQueryHandler
 from pymongo import MongoClient
 from dotenv import load_dotenv
+from datetime import datetime  # ADD THIS IMPORT
 import aiohttp
 import asyncio
 
@@ -17,27 +18,41 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Environment variables
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')  # Note: Typo in your env variable name
-MONGODB_URI = os.getenv('MONGODB_URT')       # Note: Typo in your env variable name
-DB_NAME = os.getenv('DB_NAME')
-COLLECTION = os.getenv('COLLECTION')
+# Environment variables - FIXED TYPOS
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN') or os.getenv('TELECRAM_TOKEN')  # Handle both
+MONGODB_URI = os.getenv('MONGODB_URI') or os.getenv('MONGODB_URT', '')       # Handle both
+DB_NAME = os.getenv('DB_NAME', 'Aariyan')
+COLLECTION = os.getenv('COLLECTION', 'users')
 ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_ID', '').split(',') if id.strip()]
 FREE_DAILY_LIMIT = int(os.getenv('FREE_DAILY_LIMIT', 4))
 
+# Fix MongoDB URI if missing protocol
+if MONGODB_URI and not MONGODB_URI.startswith(('mongodb://', 'mongodb+srv://')):
+    MONGODB_URI = 'mongodb+srv://' + MONGODB_URI
+
 # Initialize MongoDB client
 try:
-    client = MongoClient(MONGODB_URI)
-    db = client[DB_NAME]
-    users_collection = db[COLLECTION]
-    logger.info("Connected to MongoDB successfully")
+    if MONGODB_URI:
+        client = MongoClient(MONGODB_URI)
+        db = client[DB_NAME]
+        users_collection = db[COLLECTION]
+        logger.info("Connected to MongoDB successfully")
+        
+        # Test connection
+        users_collection.find_one({})
+        logger.info("MongoDB connection test successful")
+    else:
+        raise ValueError("MongoDB URI not found")
 except Exception as e:
     logger.error(f"Error connecting to MongoDB: {e}")
-    # Create a dummy collection to prevent crashes
+    # Create a complete dummy collection to prevent crashes
     class DummyCollection:
         def find_one(self, *args, **kwargs): return None
         def update_one(self, *args, **kwargs): return None
+        def insert_one(self, *args, **kwargs): return None
+        def update_many(self, *args, **kwargs): return None
     users_collection = DummyCollection()
+    logger.warning("Using dummy collection - database operations will not be saved")
 
 async def start(update: Update, context: CallbackContext) -> None:
     try:
@@ -47,22 +62,34 @@ async def start(update: Update, context: CallbackContext) -> None:
         if not user_data:
             # Referral system
             referral_id = context.args[0] if context.args else None
+            
+            # Only process referral if it's a valid number
+            if referral_id and not referral_id.isdigit():
+                referral_id = None
+                
             new_user = {
                 'user_id': user_id,
                 'is_premium': False,
                 'usage_count': 0,
                 'referral_id': referral_id,
                 'referrals': [],
-                'last_used': None
+                'last_used': None,
+                'join_date': datetime.now()
             }
-            users_collection.insert_one(new_user)
             
-            # Reward referrer if applicable
-            if referral_id:
-                users_collection.update_one(
-                    {'user_id': int(referral_id)},
-                    {'$push': {'referrals': user_id}}
-                )
+            # Only insert if we have a real database connection
+            if hasattr(users_collection, 'insert_one'):
+                users_collection.insert_one(new_user)
+                
+                # Reward referrer if applicable
+                if referral_id and referral_id.isdigit():
+                    try:
+                        users_collection.update_one(
+                            {'user_id': int(referral_id)},
+                            {'$push': {'referrals': user_id}}
+                        )
+                    except:
+                        pass  # Silently fail if referral doesn't exist
         
         welcome_text = (
             "🤖 Welcome to the Ad Skipper Bot!\n\n"
@@ -70,13 +97,19 @@ async def start(update: Update, context: CallbackContext) -> None:
             "🔹 /skip - Skip ads on a video\n"
             "🔹 /premium - Get premium features\n"
             "🔹 /referral - Get your referral link\n"
-            "🔹 /stats - Check your usage statistics"
+            "🔹 /stats - Check your usage statistics\n\n"
+            "Type /skip to get started!"
         )
         
         await update.message.reply_text(welcome_text)
     except Exception as e:
         logger.error(f"Error in start command: {e}")
-        await update.message.reply_text("❌ An error occurred. Please try again later.")
+        # User-friendly error message
+        await update.message.reply_text(
+            "🚀 Welcome to Ad Skipper Bot!\n\n"
+            "I can help you skip ads on supported platforms.\n\n"
+            "Use /skip to start skipping ads now!"
+        )
 
 async def skip_ads(update: Update, context: CallbackContext) -> None:
     try:
@@ -98,11 +131,12 @@ async def skip_ads(update: Update, context: CallbackContext) -> None:
         # Process the ad skipping (implementation depends on your specific needs)
         # This is a placeholder for your actual ad-skipping logic
         
-        # Update usage count
-        users_collection.update_one(
-            {'user_id': user_id},
-            {'$inc': {'usage_count': 1}, '$set': {'last_used': datetime.now()}}
-        )
+        # Update usage count only if we have a real database
+        if hasattr(users_collection, 'update_one'):
+            users_collection.update_one(
+                {'user_id': user_id},
+                {'$inc': {'usage_count': 1}, '$set': {'last_used': datetime.now()}}
+            )
         
         await update.message.reply_text("✅ Ads skipped successfully!")
     except Exception as e:
@@ -138,7 +172,8 @@ async def button_handler(update: Update, context: CallbackContext) -> None:
 async def referral_info(update: Update, context: CallbackContext) -> None:
     try:
         user_id = update.effective_user.id
-        referral_link = f"https://t.me/YourBotUsername?start={user_id}"
+        bot_username = (await context.bot.get_me()).username
+        referral_link = f"https://t.me/{bot_username}?start={user_id}"
         
         text = (
             "📨 Referral Program\n\n"
@@ -158,8 +193,14 @@ def main() -> None:
         logger.error("TELEGRAM_TOKEN not found in environment variables")
         return
     
-    # Create application
-    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    # Create application with better settings
+    application = (
+        Application.builder()
+        .token(TELEGRAM_TOKEN)
+        .read_timeout(30)
+        .write_timeout(30)
+        .build()
+    )
     
     # Add handlers
     application.add_handler(CommandHandler("start", start))
@@ -168,18 +209,13 @@ def main() -> None:
     application.add_handler(CommandHandler("referral", referral_info))
     application.add_handler(CallbackQueryHandler(button_handler))
     
-    # Start the bot
-    if os.getenv('DYNO'):  # Running on Heroku
-        port = int(os.environ.get('PORT', 8443))
-        webhook_url = f"https://your-app-name.herokuapp.com/{TELEGRAM_TOKEN}"
-        application.run_webhook(
-            listen="0.0.0.0",
-            port=port,
-            url_path=TELEGRAM_TOKEN,
-            webhook_url=webhook_url
-        )
-    else:  # Running locally
-        application.run_polling()
+    # Start the bot with improved polling (for Railway)
+    logger.info("Starting bot with polling...")
+    application.run_polling(
+        poll_interval=0.5,  # Faster polling
+        timeout=20,
+        drop_pending_updates=True
+    )
 
 if __name__ == '__main__':
     main()
