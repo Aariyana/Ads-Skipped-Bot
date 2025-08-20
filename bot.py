@@ -386,7 +386,7 @@ async def referral_info(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text(text, parse_mode='Markdown')
         
     except Exception as e:
-        logger.error(f"Error in referral: {e}")
+        logger.error(f"Error in referral: {e})
         await update.message.reply_text("❌ Error generating referral link.")
 
 async def pay(update: Update, context: CallbackContext) -> None:
@@ -434,24 +434,11 @@ async def button_handler(update: Update, context: CallbackContext) -> None:
 
 # ==================== ADMIN COMMANDS ====================
 
-async def admin_help(update: Update, context: CallbackContext) -> None:
-    """Show admin help"""
+async def make_premium(update: Update, context: CallbackContext) -> None:
+    """Admin command to make user premium"""
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("❌ Admin only command.")
         return
-    
-    text = """
-👑 *Admin Commands* 👑
-
-/make\_premium <user\_id> <days> - Make user premium
-/userinfo <user\_id> - Get user information  
-/broadcast <message> - Broadcast to all users
-/stats - View user statistics with admin info
-
-*Only admins can use these commands!*
-"""
-    
-    await update.message.reply_text(text, parse_mode='Markdown')
     
     if not context.args:
         await update.message.reply_text("Usage: /make_premium <user_id> <days>\nExample: /make_premium 123456789 30")
@@ -568,8 +555,8 @@ async def admin_help(update: Update, context: CallbackContext) -> None:
     text = """
 👑 *Admin Commands* 👑
 
-/make_premium <user_id> <days> - Make user premium
-/userinfo <user_id> - Get user information
+/make\_premium <user\_id> <days> - Make user premium
+/userinfo <user\_id> - Get user information  
 /broadcast <message> - Broadcast to all users
 /stats - View user statistics with admin info
 
@@ -608,3 +595,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+```
