@@ -5,8 +5,7 @@ from telegram.ext import Application, CommandHandler, CallbackContext, CallbackQ
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from datetime import datetime
-import aiohttp
-import asyncio
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -32,7 +31,7 @@ if MONGODB_URI and not MONGODB_URI.startswith(('mongodb://', 'mongodb+srv://')):
 
 # Initialize MongoDB client
 try:
-    if MONGODB_URI and not MONGODB_URI.endswith('Aariyan:Abora2969@cluster0'):  # Fix for your bad URI
+    if MONGODB_URI and not MONGODB_URI.endswith('Aariyan:Abora2969@cluster0'):
         client = MongoClient(MONGODB_URI)
         db = client[DB_NAME]
         users_collection = db[COLLECTION]
@@ -74,57 +73,6 @@ async def start(update: Update, context: CallbackContext) -> None:
             if hasattr(users_collection, 'insert_one'):
                 users_collection.insert_one(new_user)
                 logger.info(f"New user created: {user_id}")
-async def premium_info(update: Update, context: CallbackContext) -> None:
-    """Display premium information and purchase options"""
-    try:
-        keyboard = [
-            [InlineKeyboardButton("💎 Get Premium", callback_data='premium_purchase')],
-            [InlineKeyboardButton("📊 Check Benefits", callback_data='premium_benefits')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        text = (
-            "🌟 <b>Premium Features</b> 🌟\n\n"
-            "• ✅ Unlimited ad skipping\n"
-            "• ✅ Priority processing\n" 
-            "• ✅ Exclusive features\n"
-            "• ✅ No daily limits\n"
-            "• ✅ Priority support\n\n"
-            "<i>Click below to purchase premium access!</i>"
-        )
-        
-        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='HTML')
-    except Exception as e:
-        logger.error(f"Error in premium_info: {e}")
-        await update.message.reply_text("❌ Could not load premium information. Please try again.")
-
-async def button_handler(update: Update, context: CallbackContext) -> None:
-    """Handle button callbacks"""
-    try:
-        query = update.callback_query
-        await query.answer()
-        
-        if query.data == 'premium_purchase':
-            await query.edit_message_text(
-                "💎 <b>Premium Purchase</b>\n\n"
-                "To get premium access, please contact our admin:\n"
-                "@AdminUsername\n\n"
-                "Or use our referral program to earn free premium days!",
-                parse_mode='HTML'
-            )
-        elif query.data == 'premium_benefits':
-            await query.edit_message_text(
-                "🎯 <b>Premium Benefits</b>\n\n"
-                "• Unlimited ad skipping (no daily limits)\n"
-                "• 5x faster processing speed\n"
-                "• Exclusive early access to new features\n"
-                "• Priority customer support\n"
-                "• No waiting times during peak hours\n\n"
-                "Upgrade today for the best experience!",
-                parse_mode='HTML'
-            )
-    except Exception as e:
-        logger.error(f"Error in button_handler: {e}")
         
         welcome_text = (
             "🤖 Welcome to the Ad Skipper Bot!\n\n"
@@ -170,12 +118,79 @@ async def skip_ads(update: Update, context: CallbackContext) -> None:
         logger.error(f"Error in skip_ads command: {e}")
         await update.message.reply_text("❌ Failed to skip ads. Please try again later.")
 
-# ... (keep the rest of your functions the same) ...
+async def premium_info(update: Update, context: CallbackContext) -> None:
+    """Display premium information and purchase options"""
+    try:
+        keyboard = [
+            [InlineKeyboardButton("💎 Get Premium", callback_data='premium_purchase')],
+            [InlineKeyboardButton("📊 Check Benefits", callback_data='premium_benefits')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        text = (
+            "🌟 <b>Premium Features</b> 🌟\n\n"
+            "• ✅ Unlimited ad skipping\n"
+            "• ✅ Priority processing\n" 
+            "• ✅ Exclusive features\n"
+            "• ✅ No daily limits\n"
+            "• ✅ Priority support\n\n"
+            "<i>Click below to purchase premium access!</i>"
+        )
+        
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"Error in premium_info: {e}")
+        await update.message.reply_text("❌ Could not load premium information. Please try again.")
+
+async def referral_info(update: Update, context: CallbackContext) -> None:
+    try:
+        user_id = update.effective_user.id
+        bot_username = (await context.bot.get_me()).username
+        referral_link = f"https://t.me/{bot_username}?start={user_id}"
+        
+        text = (
+            "📨 Referral Program\n\n"
+            f"Your referral link: {referral_link}\n\n"
+            f"Earn {os.getenv('PREMIUM_DAYS_PER_REWARD', 1)} day of premium for every "
+            f"{os.getenv('REFERRALS_PER_REWARD', 10)} friends who join using your link!"
+        )
+        
+        await update.message.reply_text(text)
+    except Exception as e:
+        logger.error(f"Error in referral_info: {e}")
+        await update.message.reply_text("❌ An error occurred. Please try again later.")
+
+async def button_handler(update: Update, context: CallbackContext) -> None:
+    """Handle button callbacks"""
+    try:
+        query = update.callback_query
+        await query.answer()
+        
+        if query.data == 'premium_purchase':
+            await query.edit_message_text(
+                "💎 <b>Premium Purchase</b>\n\n"
+                "To get premium access, please contact our admin:\n"
+                "@AdminUsername\n\n"
+                "Or use our referral program to earn free premium days!",
+                parse_mode='HTML'
+            )
+        elif query.data == 'premium_benefits':
+            await query.edit_message_text(
+                "🎯 <b>Premium Benefits</b>\n\n"
+                "• Unlimited ad skipping (no daily limits)\n"
+                "• 5x faster processing speed\n"
+                "• Exclusive early access to new features\n"
+                "• Priority customer support\n"
+                "• No waiting times during peak hours\n\n"
+                "Upgrade today for the best experience!",
+                parse_mode='HTML'
+            )
+    except Exception as e:
+        logger.error(f"Error in button_handler: {e}")
 
 def main() -> None:
     # Emergency stop any other running instances
     try:
-        import requests
         requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/close", timeout=5)
         logger.info("Closed any previous bot instances")
     except:
@@ -202,13 +217,12 @@ def main() -> None:
     application.add_handler(CommandHandler("referral", referral_info))
     application.add_handler(CallbackQueryHandler(button_handler))
     
-    # Start the bot with improved polling
+    # Start the bot with improved polling (for Railway)
     logger.info("Starting bot with polling...")
     application.run_polling(
         poll_interval=1.0,
         timeout=30,
-        drop_pending_updates=True,
-        allowed_updates=Update.ALL_TYPES
+        drop_pending_updates=True
     )
 
 if __name__ == '__main__':
