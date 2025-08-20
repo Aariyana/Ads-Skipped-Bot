@@ -8,10 +8,10 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 # -----------------------------
 # CONFIG
 # -----------------------------
-TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
-MONGO_URI = "YOUR_MONGO_URI"
-UPI_ID = "YOUR_UPI_ID"
-ADMINS = "YOUR_TELEGRAM_ID"
+TOKEN = "TELEGRAM_TOKEN"
+MONGO_URI = "MONGODB_URI"
+UPI_ID = "UPI_ID"
+ADMINS = "ADMINS"
 
 # -----------------------------
 # DATABASE
