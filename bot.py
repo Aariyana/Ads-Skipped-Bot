@@ -561,17 +561,17 @@ async def admin_help(update: Update, context: CallbackContext) -> None:
         return
     
     text = """
-👑 Admin Commands 👑
+<b>👑 Admin Commands 👑</b>
 
-/make_premium <user_id> <days> - Make user premium
-/userinfo <user_id> - Get user information
-/broadcast <message> - Broadcast to all users
-/stats - View user statistics with admin info
+<code>/make_premium</code> <i>user_id days</i> - Make user premium
+<code>/userinfo</code> <i>user_id</i> - Get user information
+<code>/broadcast</code> <i>message</i> - Broadcast to all users
+<code>/stats</code> - View user statistics with admin info
 
-Only admins can use these commands!
+<i>Only admins can use these commands!</i>
 """
     
-    await update.message.reply_text(text, parse_mode='Markdown')
+    await update.message.reply_text(text, parse_mode='HTML')
 
 def main() -> None:
     if not TELEGRAM_TOKEN:
