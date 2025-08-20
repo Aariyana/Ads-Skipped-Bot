@@ -11,6 +11,28 @@ from datetime import datetime, timedelta
 # Load environment variables
 load_dotenv()
 
+
+# ==================== TRACKING PARAMETERS & SHORTENERS ====================
+TRACKING_PARAMS = {
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id",
+    "gclid", "fbclid", "igshid", "msclkid", "vero_conv", "vero_id", "ref", "ref_src",
+    "ref_url", "spm", "ampshare", "utm_reader"
+}
+
+SHORTENER_HOSTS = {
+    "bit.ly", "t.co", "goo.gl", "tinyurl.com", "is.gd", "buff.ly", "ow.ly", "rebrand.ly",
+    "ift.tt", "linktr.ee", "cutt.ly", "s.id", "v.gd", "soo.gd", "bl.ink", "shorte.st",
+    "adf.ly", "ouo.io", "linkvertise.com", "clk.sh", "exe.io", "bc.vc", "shrtco.de", "shr.link",
+    "lnkd.in", "1drv.ms", "rb.gy", "qr.ae", "trib.al", "smarturl.it", "spotify.link"
+}
+# ==========================================================================
+
+# Set up logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
 # Set up logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -116,7 +138,7 @@ def clean_ad_url(url):
         
         for key, values in query_params.items():
             key_lower = key.lower()
-            is_tracking = any(track_param in key_lower for track_param in tracking_params)
+            is_tracking = key_lower in TRACKING_PARAMS
             
             if not is_tracking:
                 clean_params[key] = values[0] if len(values) == 1 else values
