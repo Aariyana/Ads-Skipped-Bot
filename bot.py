@@ -74,6 +74,57 @@ async def start(update: Update, context: CallbackContext) -> None:
             if hasattr(users_collection, 'insert_one'):
                 users_collection.insert_one(new_user)
                 logger.info(f"New user created: {user_id}")
+async def premium_info(update: Update, context: CallbackContext) -> None:
+    """Display premium information and purchase options"""
+    try:
+        keyboard = [
+            [InlineKeyboardButton("💎 Get Premium", callback_data='premium_purchase')],
+            [InlineKeyboardButton("📊 Check Benefits", callback_data='premium_benefits')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        text = (
+            "🌟 <b>Premium Features</b> 🌟\n\n"
+            "• ✅ Unlimited ad skipping\n"
+            "• ✅ Priority processing\n" 
+            "• ✅ Exclusive features\n"
+            "• ✅ No daily limits\n"
+            "• ✅ Priority support\n\n"
+            "<i>Click below to purchase premium access!</i>"
+        )
+        
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"Error in premium_info: {e}")
+        await update.message.reply_text("❌ Could not load premium information. Please try again.")
+
+async def button_handler(update: Update, context: CallbackContext) -> None:
+    """Handle button callbacks"""
+    try:
+        query = update.callback_query
+        await query.answer()
+        
+        if query.data == 'premium_purchase':
+            await query.edit_message_text(
+                "💎 <b>Premium Purchase</b>\n\n"
+                "To get premium access, please contact our admin:\n"
+                "@AdminUsername\n\n"
+                "Or use our referral program to earn free premium days!",
+                parse_mode='HTML'
+            )
+        elif query.data == 'premium_benefits':
+            await query.edit_message_text(
+                "🎯 <b>Premium Benefits</b>\n\n"
+                "• Unlimited ad skipping (no daily limits)\n"
+                "• 5x faster processing speed\n"
+                "• Exclusive early access to new features\n"
+                "• Priority customer support\n"
+                "• No waiting times during peak hours\n\n"
+                "Upgrade today for the best experience!",
+                parse_mode='HTML'
+            )
+    except Exception as e:
+        logger.error(f"Error in button_handler: {e}")
         
         welcome_text = (
             "🤖 Welcome to the Ad Skipper Bot!\n\n"
